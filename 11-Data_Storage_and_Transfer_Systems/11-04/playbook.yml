@@ -1,0 +1,32 @@
+---
+- name: "Setting up RabbitMQ cluster"
+  hosts: all
+  become: yes
+  gather_facts: no
+
+  tasks:
+  - apt:
+      upgrade: "yes"
+      update_cache: true
+
+  - package:
+      name: rabbitmq-server
+      state: present
+
+  - copy:
+      content: "cookie"
+      dest: /var/lib/rabbitmq/.erlang.cookie
+
+  - service:
+      name: rabbitmq-server
+      state: restarted
+      enabled: true
+
+  - command: rabbitmqctl set_policy ha-all "" '{"ha-mode":"all","ha-sync-mode":"automatic"}'
+
+  - command: "{{ item }}"
+    with_items:
+    - rabbitmqctl stop_app
+    - rabbitmqctl join_cluster rabbit@rmq01
+    - rabbitmqctl start_app
+    when: inventory_hostname not in "rmq01"
